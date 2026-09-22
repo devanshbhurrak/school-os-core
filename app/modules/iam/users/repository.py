@@ -39,6 +39,8 @@ async def list_users_in_org(
     session: AsyncSession,
     organization_id: str,
     params: CursorParams,
+    *,
+    search: str | None = None,
 ) -> CursorPage[User]:
     stmt = (
         select(User)
@@ -49,6 +51,32 @@ async def list_users_in_org(
         )
         .distinct()
     )
+    if search:
+        pattern = f"%{search.strip().lower()}%"
+        stmt = stmt.where(
+            func.lower(User.email).like(pattern)
+            | func.lower(User.phone).like(pattern)
+        )
+    return await paginate_cursor(session, stmt, params, model=User)
+
+
+async def list_all_users(
+    session: AsyncSession,
+    params: CursorParams,
+    *,
+    search: str | None = None,
+) -> CursorPage[User]:
+    """Return all non-deleted users across every organization.
+
+    Only callable by platform admins (enforced at the router layer).
+    """
+    stmt = select(User).where(User.deleted_at.is_(None))
+    if search:
+        pattern = f"%{search.strip().lower()}%"
+        stmt = stmt.where(
+            func.lower(User.email).like(pattern)
+            | func.lower(User.phone).like(pattern)
+        )
     return await paginate_cursor(session, stmt, params, model=User)
 
 

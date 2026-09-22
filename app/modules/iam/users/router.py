@@ -27,15 +27,16 @@ class UserDelete(BaseModel):
 
 @router.get("", response_model=CursorPage[UserRead])
 async def list_users(
+    search: str | None = None,
     params: CursorParams = Depends(),
     ctx: RequestContext = Depends(require(P_USER_LIST)),
     session: SessionDep = None,
 ):
+    if ctx.is_platform_admin:
+        return await repository.list_all_users(session, params, search=search)
     if ctx.organization_id is None:
-        from app.core.pagination import CursorPage as CP
-
-        return CP(items=[], next_cursor=None, has_more=False)
-    return await repository.list_users_in_org(session, ctx.organization_id, params)
+        return CursorPage(items=[], next_cursor=None, has_more=False)
+    return await repository.list_users_in_org(session, ctx.organization_id, params, search=search)
 
 
 @router.get("/{user_id}", response_model=UserRead)

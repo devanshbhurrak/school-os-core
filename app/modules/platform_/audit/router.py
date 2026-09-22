@@ -24,6 +24,7 @@ router = APIRouter(prefix="/audit-logs", tags=["audit-logs"])
 @router.get("", response_model=CursorPage[AuditLogRead])
 async def list_audit_logs(
     school_id: str | None = None,
+    organization_id: str | None = None,
     entity_type: str | None = None,
     entity_id: str | None = None,
     actor_user_id: str | None = None,
@@ -39,12 +40,19 @@ async def list_audit_logs(
         return CursorPage(items=[], next_cursor=None, has_more=False)
 
     effective_school_id = school_id if school_id is not None else ctx.school_id
-    organization_id = None if effective_school_id else ctx.organization_id
+
+    if effective_school_id:
+        effective_org_id = None
+    elif ctx.is_platform_admin and organization_id is not None:
+        effective_org_id = organization_id
+    else:
+        effective_org_id = ctx.organization_id
+
     return await repository.list_audit_logs(
         session,
         params,
         school_id=effective_school_id,
-        organization_id=organization_id,
+        organization_id=effective_org_id,
         entity_type=entity_type,
         entity_id=entity_id,
         actor_user_id=actor_user_id,
