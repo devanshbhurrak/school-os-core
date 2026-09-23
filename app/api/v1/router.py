@@ -20,6 +20,15 @@ from app.modules.people.contacts.router import router as contacts_router
 from app.modules.people.persons.router import router as persons_router
 from app.modules.platform_.audit.router import router as audit_logs_router
 from app.modules.platform_.stats.router import router as platform_stats_router
+from app.modules.students.router import router as students_router
+from app.modules.students.enrollments.router import router as enrollments_router
+from app.modules.students.guardians.router import students_router as guardian_students_router
+from app.modules.students.guardians.router import guardians_router
+from app.modules.announcements.router import router as announcements_router
+from app.modules.teachers.router import router as teachers_router
+from app.modules.timetables.router import router as timetables_router
+from app.modules.attendance.router import router as attendance_router
+from app.modules.bulk_import.router import router as bulk_import_router
 
 api_router = APIRouter()
 
@@ -40,3 +49,12 @@ api_router.include_router(academic_classes_router)
 api_router.include_router(subjects_router)
 api_router.include_router(class_subjects_router)
 api_router.include_router(cohorts_router)
+api_router.include_router(students_router)
+api_router.include_router(enrollments_router)
+api_router.include_router(guardian_students_router)
+api_router.include_router(guardians_router)
+api_router.include_router(announcements_router)
+api_router.include_router(teachers_router)
+api_router.include_router(timetables_router)
+api_router.include_router(attendance_router)
+api_router.include_router(bulk_import_router)

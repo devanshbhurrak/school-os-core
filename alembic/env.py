@@ -21,6 +21,12 @@ from app.modules.iam import models as _iam_models  # noqa: F401
 from app.modules.people import models as _people_models  # noqa: F401
 from app.modules.academic import models as _academic_models  # noqa: F401
 from app.modules.platform_ import models as _platform_models  # noqa: F401
+from app.modules.students import models as _students_models  # noqa: F401
+from app.modules.teachers import models as _teachers_models  # noqa: F401
+from app.modules.timetables import models as _timetables_models  # noqa: F401
+from app.modules.announcements import models as _announcements_models  # noqa: F401
+from app.modules.attendance import models as _attendance_models  # noqa: F401
+from app.modules.bulk_import import models as _bulk_import_models  # noqa: F401
 
 config = context.config
 

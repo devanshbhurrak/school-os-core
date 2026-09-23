@@ -72,7 +72,7 @@ async def update(
     year.updated_by_id = ctx.user_id
     await session.flush()
 
-    if year.is_current:
+    if payload.get("is_current"):
         await repository.unset_current(session, ctx.school_id, exclude_id=year.id)
 
     await audit(

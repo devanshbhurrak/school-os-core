@@ -133,6 +133,18 @@ SCHOOL_SCOPED_TABLES: tuple[str, ...] = (
     "subjects",
     "class_subjects",
     "cohorts",
+    "students",
+    "student_enrollments",
+    "teachers",
+    "teacher_assignments",
+    "announcements",
+    "announcement_targets",
+    "period_definitions",
+    "timetable_slots",
+    "student_guardians",
+    "attendance_sessions",
+    "attendance_records",
+    "import_jobs",
 )
 
 # The organizations root is protected by a policy keyed on its own id.

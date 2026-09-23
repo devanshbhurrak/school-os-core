@@ -34,6 +34,13 @@ from app.modules.people.addresses import permissions as _ap  # noqa: E402, F401
 from app.modules.people.contacts import permissions as _cp  # noqa: E402, F401
 from app.modules.people.persons import permissions as _pp  # noqa: E402, F401
 from app.modules.platform_.audit import permissions as _audit_p  # noqa: E402, F401
+from app.modules.students.enrollments import permissions as _enrollment_p  # noqa: E402, F401
+from app.modules.students.guardians import permissions as _guardian_p  # noqa: E402, F401
+from app.modules.teachers import permissions as _teachers_p  # noqa: E402, F401
+from app.modules.timetables import permissions as _timetables_p  # noqa: E402, F401
+from app.modules.announcements import permissions as _announcements_p  # noqa: E402, F401
+from app.modules.attendance import permissions as _attendance_p  # noqa: E402, F401
+from app.modules.bulk_import import permissions as _bulk_import_p  # noqa: E402, F401
 
 logger = structlog.get_logger(__name__)
 
@@ -62,7 +69,7 @@ ROLE_CATALOG: list[dict] = [
         "scope_level": "ORGANIZATION",
         "data_scope": DataScope.ORGANIZATION.value,
         "permissions": all_in_module("iam") + all_in_module("people") + all_in_module("academic")
-        + all_in_module("platform"),
+        + all_in_module("students") + all_in_module("platform") + all_in_module("attendance"),
     },
     {
         "code": "SCHOOL_ADMIN",
@@ -72,6 +79,12 @@ ROLE_CATALOG: list[dict] = [
         "data_scope": DataScope.SCHOOL.value,
         "permissions": all_in_module("people")
         + all_in_module("academic")
+        + all_in_module("students")
+        + all_in_module("teachers")
+        + all_in_module("timetables")
+        + all_in_module("announcements")
+        + all_in_module("attendance")
+        + all_in_module("bulk_import")
         + [c for c in all_in_module("iam") if c.startswith("iam.membership.")
            or c.startswith("iam.user.") or c.startswith("iam.school.") or c.startswith("iam.role.")]
         + all_in_module("platform"),

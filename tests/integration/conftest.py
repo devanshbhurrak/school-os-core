@@ -112,6 +112,14 @@ from app.modules.people.addresses import permissions as _ap  # noqa: E402, F401
 from app.modules.people.contacts import permissions as _cp  # noqa: E402, F401
 from app.modules.people.persons import permissions as _pp  # noqa: E402, F401
 from app.modules.platform_.audit import permissions as _audit_p  # noqa: E402, F401
+from app.modules.students import permissions as _students_p  # noqa: E402, F401
+from app.modules.students.enrollments import permissions as _enrollment_p  # noqa: E402, F401
+from app.modules.students.guardians import permissions as _guardian_p  # noqa: E402, F401
+from app.modules.teachers import permissions as _teachers_p  # noqa: E402, F401
+from app.modules.timetables import permissions as _timetables_p  # noqa: E402, F401
+from app.modules.announcements import permissions as _announcements_p  # noqa: E402, F401
+from app.modules.attendance import permissions as _attendance_p  # noqa: E402, F401
+from app.modules.bulk_import import permissions as _bulk_import_p  # noqa: E402, F401
 
 # Imports the role catalog (and the permission modules it needs).
 from scripts.sync_roles import ROLE_CATALOG  # noqa: E402
