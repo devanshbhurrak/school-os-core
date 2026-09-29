@@ -41,31 +41,22 @@ router = APIRouter(tags=["timetables"])
 async def _slot_read(slot: TimetableSlot) -> TimetableSlotRead:
     """Build TimetableSlotRead with denormalized display fields."""
     teacher_name: str | None = None
-    try:
-        person = slot.teacher.person
-        teacher_name = " ".join(
-            p for p in [person.first_name, person.last_name] if p
-        ) or None
-    except Exception:
-        pass
+    teacher = getattr(slot, "teacher", None)
+    if teacher is not None:
+        person = getattr(teacher, "person", None)
+        if person is not None:
+            first = getattr(person, "first_name", "") or ""
+            last = getattr(person, "last_name", None)
+            teacher_name = " ".join(filter(None, [first, last])) or None
 
-    subject_name: str | None = None
-    try:
-        subject_name = slot.subject.name
-    except Exception:
-        pass
+    subject = getattr(slot, "subject", None)
+    subject_name: str | None = getattr(subject, "name", None) if subject is not None else None
 
-    cohort_name: str | None = None
-    try:
-        cohort_name = slot.cohort.name
-    except Exception:
-        pass
+    cohort = getattr(slot, "cohort", None)
+    cohort_name: str | None = getattr(cohort, "name", None) if cohort is not None else None
 
-    period_name: str | None = None
-    try:
-        period_name = slot.period_definition.name
-    except Exception:
-        pass
+    period_def = getattr(slot, "period_definition", None)
+    period_name: str | None = getattr(period_def, "name", None) if period_def is not None else None
 
     data = {
         "id": slot.id,
@@ -190,12 +181,7 @@ async def list_timetable_slots(
         # Return empty if no filter provided
         return CursorPage(items=[], next_cursor=None, has_more=False)
 
-    # Load related objects for each slot
-    items = []
-    for slot in page.items:
-        loaded = await repository.get_slot_by_id(session, ctx.school_id, slot.id)
-        if loaded:
-            items.append(await _slot_read(loaded))
+    items = [await _slot_read(slot) for slot in page.items]
     return CursorPage(items=items, next_cursor=page.next_cursor, has_more=page.has_more)
 
 

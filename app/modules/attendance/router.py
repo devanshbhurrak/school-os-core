@@ -44,19 +44,15 @@ class SessionDelete(BaseModel):
 def _record_read(record: object) -> AttendanceRecordRead:
     """Build AttendanceRecordRead with denormalized student name if loaded."""
     student_name: str | None = None
-    # Try to resolve student name from relationships (if loaded)
-    try:
-        enrollment = getattr(record, "_enrollment", None)
-        if enrollment:
-            student = getattr(enrollment, "student", None)
-            if student:
-                person = getattr(student, "person", None)
-                if person:
-                    first = getattr(person, "first_name", "") or ""
-                    last = getattr(person, "last_name", None)
-                    student_name = " ".join(filter(None, [first, last])) or None
-    except Exception:
-        pass
+    enrollment = getattr(record, "_enrollment", None)
+    if enrollment is not None:
+        student = getattr(enrollment, "student", None)
+        if student is not None:
+            person = getattr(student, "person", None)
+            if person is not None:
+                first = getattr(person, "first_name", "") or ""
+                last = getattr(person, "last_name", None)
+                student_name = " ".join(filter(None, [first, last])) or None
 
     data = AttendanceRecordRead.model_validate(record)
     data.student_name = student_name

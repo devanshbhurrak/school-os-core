@@ -5,7 +5,8 @@ from datetime import date
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Date, ForeignKey, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import relationship as orm_relationship
 
 from app.db.base import Base
 from app.db.mixins import ActorMixin, PKMixin, SoftDeleteMixin, TimestampMixin, VersionMixin
@@ -44,7 +45,7 @@ class Student(PKMixin, TimestampMixin, VersionMixin, SoftDeleteMixin, ActorMixin
     withdrawal_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Relationship for eager loading
-    person: Mapped["Person"] = relationship(
+    person: Mapped["Person"] = orm_relationship(
         "Person", foreign_keys=[person_id], lazy="raise"
     )
 
@@ -95,9 +96,9 @@ class StudentEnrollment(PKMixin, TimestampMixin, VersionMixin, ActorMixin, Base)
     )
 
     # Relationships for eager loading
-    student: Mapped["Student"] = relationship("Student", foreign_keys=[student_id], lazy="raise")
-    cohort: Mapped["Cohort"] = relationship("Cohort", foreign_keys=[cohort_id], lazy="raise")
-    academic_year: Mapped["AcademicYear"] = relationship(
+    student: Mapped["Student"] = orm_relationship("Student", foreign_keys=[student_id], lazy="raise")
+    cohort: Mapped["Cohort"] = orm_relationship("Cohort", foreign_keys=[cohort_id], lazy="raise")
+    academic_year: Mapped["AcademicYear"] = orm_relationship(
         "AcademicYear", foreign_keys=[academic_year_id], lazy="raise"
     )
 
@@ -132,8 +133,8 @@ class StudentGuardian(PKMixin, TimestampMixin, ActorMixin, Base):
     is_emergency_contact: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     can_pickup: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    guardian_person: Mapped["Person"] = relationship(
-        "Person", foreign_keys=[guardian_person_id], lazy="raise"
+    guardian_person: Mapped["Person"] = orm_relationship(
+        "Person", foreign_keys="StudentGuardian.guardian_person_id", lazy="raise"
     )
 
     __table_args__ = (

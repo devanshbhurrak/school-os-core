@@ -80,6 +80,16 @@ async def get_slot_by_id(
     return (await session.scalars(stmt)).first()
 
 
+def _slot_options() -> list:
+    """Selectin-load options for denormalized slot reads."""
+    return [
+        selectinload(TimetableSlot.teacher).selectinload(Teacher.person),
+        selectinload(TimetableSlot.subject),
+        selectinload(TimetableSlot.cohort),
+        selectinload(TimetableSlot.period_definition),
+    ]
+
+
 async def list_for_cohort(
     session: AsyncSession,
     cohort_id: str,
@@ -91,7 +101,7 @@ async def list_for_cohort(
     limit: int = 200,
 ) -> CursorPage[TimetableSlot]:
     params = CursorParams(cursor=cursor, limit=limit)
-    stmt = select(TimetableSlot).where(
+    stmt = select(TimetableSlot).options(*_slot_options()).where(
         TimetableSlot.cohort_id == cohort_id,
         TimetableSlot.school_id == school_id,
     )
@@ -113,7 +123,7 @@ async def list_for_teacher(
     limit: int = 200,
 ) -> CursorPage[TimetableSlot]:
     params = CursorParams(cursor=cursor, limit=limit)
-    stmt = select(TimetableSlot).where(
+    stmt = select(TimetableSlot).options(*_slot_options()).where(
         TimetableSlot.teacher_id == teacher_id,
         TimetableSlot.school_id == school_id,
     )
