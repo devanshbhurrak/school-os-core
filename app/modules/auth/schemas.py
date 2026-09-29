@@ -60,6 +60,7 @@ class MeResponse(BaseModel):
     is_platform_admin: bool
     organization_id: str | None = None
     school_id: str | None = None
+    accessible_school_ids: list[str] = Field(default_factory=list)
     role_codes: list[str] = Field(default_factory=list)
     permissions: list[str] = Field(default_factory=list)
     must_change_password: bool = False

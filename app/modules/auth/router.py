@@ -154,6 +154,7 @@ async def me(
         is_platform_admin=ctx.is_platform_admin,
         organization_id=ctx.organization_id,
         school_id=ctx.school_id,
+        accessible_school_ids=sorted(ctx.accessible_school_ids),
         role_codes=sorted(ctx.role_codes),
         permissions=sorted(ctx.permissions),
         must_change_password=bool(user.must_change_password) if user else False,
