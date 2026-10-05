@@ -1,7 +1,7 @@
 """Attendance routes."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
@@ -34,6 +34,14 @@ from app.modules.attendance.schemas import (
     SessionSubmit,
 )
 
+
+class AttendanceTodaySummary(BaseModel):
+    sessions_total: int
+    sessions_submitted: int
+    records_present: int
+    records_absent: int
+    records_total: int
+
 router = APIRouter(tags=["attendance"])
 
 
@@ -62,6 +70,21 @@ def _record_read(record: object) -> AttendanceRecordRead:
 # ---------------------------------------------------------------------------
 # Sessions
 # ---------------------------------------------------------------------------
+
+
+@router.get("/attendance/today-summary", response_model=AttendanceTodaySummary)
+async def get_today_attendance_summary(
+    ctx: RequestContext = Depends(require(SESSION_LIST)),
+    db: SessionDep = None,
+):
+    if ctx.school_id is None:
+        return AttendanceTodaySummary(
+            sessions_total=0, sessions_submitted=0,
+            records_present=0, records_absent=0, records_total=0,
+        )
+    today = datetime.now(timezone.utc).date()
+    summary = await repository.get_today_summary(db, ctx.school_id, today)
+    return AttendanceTodaySummary(**summary)
 
 
 @router.get("/attendance-sessions", response_model=CursorPage[AttendanceSessionRead])

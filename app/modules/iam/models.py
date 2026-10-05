@@ -155,7 +155,7 @@ class School(PKMixin, TimestampMixin, VersionMixin, ActorMixin, SoftDeleteMixin,
 # =========================================================================
 # Identity
 # =========================================================================
-class User(PKMixin, TimestampMixin, VersionMixin, SoftDeleteMixin, Base):
+class User(PKMixin, TimestampMixin, VersionMixin, SoftDeleteMixin, ActorMixin, Base):
     """A login credential holder.
 
     Intentionally NOT tenant-scoped: tenancy comes from memberships. This is

@@ -125,57 +125,79 @@ async def start_import(
             continue
 
         try:
-            # Create person first
-            person_data = PersonCreate(
-                first_name=row.get("first_name", ""),
-                last_name=row.get("last_name") or None,
-                primary_email=row.get("primary_email") or None,
-                primary_phone=row.get("primary_phone") or None,
-            )
-            person = Person(
-                organization_id=ctx.organization_id,
-                created_by_id=ctx.user_id,
-                **person_data.model_dump(),
-            )
-            session.add(person)
-            await session.flush()
-
-            if resource_type == ImportResourceType.STUDENTS:
-                from datetime import date as date_type
-                student_data = StudentCreate(
-                    person_id=person.id,
-                    admission_number=row["admission_number"].strip(),
-                    admission_date=date_type.fromisoformat(row["admission_date"].strip()),
-                    status=row.get("status", "").strip() or "ACTIVE",
+            async with session.begin_nested():
+                # Create person first
+                person_data = PersonCreate(
+                    first_name=row.get("first_name", ""),
+                    last_name=row.get("last_name") or None,
+                    primary_email=row.get("primary_email") or None,
+                    primary_phone=row.get("primary_phone") or None,
                 )
-                student = Student(
-                    school_id=ctx.school_id,
+                # Check for existing person by email or phone to avoid duplicates
+                email = person_data.primary_email
+                phone = person_data.primary_phone
+                existing = None
+                if email:
+                    existing = await session.scalar(
+                        select(Person).where(
+                            Person.organization_id == ctx.organization_id,
+                            Person.primary_email == email,
+                            Person.deleted_at.is_(None),
+                        )
+                    )
+                if not existing and phone:
+                    existing = await session.scalar(
+                        select(Person).where(
+                            Person.organization_id == ctx.organization_id,
+                            Person.primary_phone == phone,
+                            Person.deleted_at.is_(None),
+                        )
+                    )
+                person = existing or Person(
                     organization_id=ctx.organization_id,
                     created_by_id=ctx.user_id,
-                    **student_data.model_dump(),
+                    **person_data.model_dump(),
                 )
-                session.add(student)
-                await session.flush()
-            else:
-                from datetime import date as date_type
-                joining_date_str = row.get("joining_date", "").strip()
-                teacher_data = TeacherCreate(
-                    person_id=person.id,
-                    employee_number=row.get("employee_number") or None,
-                    designation=row.get("designation") or None,
-                    joining_date=date_type.fromisoformat(joining_date_str) if joining_date_str else None,
-                    status=row.get("status", "").strip() or "ACTIVE",
-                )
-                teacher = Teacher(
-                    school_id=ctx.school_id,
-                    organization_id=ctx.organization_id,
-                    created_by_id=ctx.user_id,
-                    **teacher_data.model_dump(),
-                )
-                session.add(teacher)
-                await session.flush()
+                if not existing:
+                    session.add(person)
+                    await session.flush()
 
-            success_rows += 1
+                if resource_type == ImportResourceType.STUDENTS:
+                    from datetime import date as date_type
+                    student_data = StudentCreate(
+                        person_id=person.id,
+                        admission_number=row["admission_number"].strip(),
+                        admission_date=date_type.fromisoformat(row["admission_date"].strip()),
+                        status=row.get("status", "").strip() or "ACTIVE",
+                    )
+                    student = Student(
+                        school_id=ctx.school_id,
+                        organization_id=ctx.organization_id,
+                        created_by_id=ctx.user_id,
+                        **student_data.model_dump(),
+                    )
+                    session.add(student)
+                    await session.flush()
+                else:
+                    from datetime import date as date_type
+                    joining_date_str = row.get("joining_date", "").strip()
+                    teacher_data = TeacherCreate(
+                        person_id=person.id,
+                        employee_number=row.get("employee_number") or None,
+                        designation=row.get("designation") or None,
+                        joining_date=date_type.fromisoformat(joining_date_str) if joining_date_str else None,
+                        status=row.get("status", "").strip() or "ACTIVE",
+                    )
+                    teacher = Teacher(
+                        school_id=ctx.school_id,
+                        organization_id=ctx.organization_id,
+                        created_by_id=ctx.user_id,
+                        **teacher_data.model_dump(),
+                    )
+                    session.add(teacher)
+                    await session.flush()
+
+                success_rows += 1
         except Exception as exc:
             failed_rows += 1
             row_errors.append({"row": i, "field": "row", "message": str(exc)})

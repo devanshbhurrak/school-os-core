@@ -29,6 +29,11 @@ from app.modules.teachers.router import router as teachers_router
 from app.modules.timetables.router import router as timetables_router
 from app.modules.attendance.router import router as attendance_router
 from app.modules.bulk_import.router import router as bulk_import_router
+from app.modules.notifications.router import router as notifications_router
+from app.modules.documents.router import router as documents_router
+from app.modules.parents.router import parents_router, student_parents_router
+from app.modules.reports.router import router as reports_router
+from app.modules.search.router import router as search_router
 
 api_router = APIRouter()
 
@@ -58,3 +63,9 @@ api_router.include_router(teachers_router)
 api_router.include_router(timetables_router)
 api_router.include_router(attendance_router)
 api_router.include_router(bulk_import_router)
+api_router.include_router(notifications_router)
+api_router.include_router(documents_router)
+api_router.include_router(reports_router)
+api_router.include_router(parents_router)
+api_router.include_router(student_parents_router)
+api_router.include_router(search_router)

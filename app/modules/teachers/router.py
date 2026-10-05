@@ -9,6 +9,7 @@ from app.core.context import RequestContext
 from app.core.pagination import CursorPage, CursorParams
 from app.db.session import SessionDep
 from app.modules.teachers import repository, service
+from app.modules.teachers.enums import TeacherStatus
 from app.modules.teachers.models import Teacher, TeacherAssignment
 from app.modules.teachers.permissions import (
     P_ASSIGNMENT_CREATE,
@@ -97,6 +98,23 @@ async def _assignment_read(session, assignment: TeacherAssignment) -> Assignment
 
 class TeacherDelete(BaseModel):
     version: int = Field(ge=1)
+
+
+class TeacherCountsResponse(BaseModel):
+    active: int
+    total: int
+
+
+@router.get("/teachers/counts", response_model=TeacherCountsResponse)
+async def get_teacher_counts(
+    ctx: RequestContext = Depends(require(P_TEACHER_LIST)),
+    session: SessionDep = None,
+):
+    if ctx.school_id is None:
+        return TeacherCountsResponse(active=0, total=0)
+    active = await repository.count_teachers(session, ctx.school_id, status=TeacherStatus.ACTIVE)
+    total = await repository.count_teachers(session, ctx.school_id)
+    return TeacherCountsResponse(active=active, total=total)
 
 
 @router.get("/teachers", response_model=CursorPage[TeacherRead])

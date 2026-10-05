@@ -32,6 +32,8 @@ class SchoolUpdate(BaseModel):
     contact_email: str | None = Field(default=None, max_length=255)
     contact_phone: str | None = Field(default=None, max_length=24)
     settings: dict[str, Any] | None = None
+    timezone: str | None = None
+    locale: str | None = None
     version: int = Field(ge=1)
 
 

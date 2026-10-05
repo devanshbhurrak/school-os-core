@@ -7,6 +7,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from typing import Self
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -47,6 +50,13 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = True
 
+    # --- S3 / Object Storage --------------------------------------------
+    s3_endpoint: str | None = None
+    s3_bucket: str = "school-os-documents"
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_region: str = "us-east-1"
+
     # --- Rate limiting (Phase 1: in-process) ----------------------------
     login_rate_limit_per_minute: int = 5
     password_reset_rate_limit_per_hour: int = 3
@@ -57,6 +67,12 @@ class Settings(BaseSettings):
     bootstrap_school_code: str = "demo-hs"
     bootstrap_school_name: str = "Demo High School"
     bootstrap_admin_email: str = "admin@demo.test"
+
+    @model_validator(mode="after")
+    def _validate_secret_key(self) -> Self:
+        if self.environment != "development" and self.secret_key == "change-me-generate-a-random-64-byte-value":
+            raise ValueError("SECRET_KEY must be changed from default in non-development environments")
+        return self
 
     @property
     def access_token_expire_seconds(self) -> int:

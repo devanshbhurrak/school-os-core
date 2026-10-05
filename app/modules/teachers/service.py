@@ -1,7 +1,7 @@
 """Teacher business logic."""
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -283,7 +283,7 @@ async def end_assignment(
 
     before = _assignment_snapshot(assignment)
     assignment.status = AssignmentStatus.ENDED
-    assignment.end_date = date.today()
+    assignment.end_date = datetime.now(UTC).date()
     assignment.updated_by_id = ctx.user_id
     await session.flush()
 

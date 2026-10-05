@@ -17,7 +17,7 @@ from app.modules.iam.enums import MembershipStatus, UserStatus
 from app.modules.iam.models import Membership, User
 from app.modules.iam.schools import repository as schools_repository
 from app.modules.iam.users import repository
-from app.modules.iam.users.schemas import UserCreate, UserUpdate
+from app.modules.iam.users.schemas import PlatformAdminToggle, UserCreate, UserUpdate
 from app.modules.platform_.audit.service import audit, snapshot
 
 _SNAPSHOT_FIELDS = ["email", "phone", "status", "must_change_password", "is_platform_admin"]
@@ -140,6 +140,37 @@ async def delete(session: AsyncSession, ctx: RequestContext, user: User, version
         summary=f"User {user.email or user.phone} deleted",
         before=before,
     )
+
+
+async def toggle_platform_admin(
+    session: AsyncSession,
+    ctx: RequestContext,
+    user: User,
+    data: PlatformAdminToggle,
+) -> User:
+    if user.version != data.version:
+        raise StaleResourceError()
+
+    if user.id == ctx.user_id:
+        raise InvalidRequestError("You cannot change your own platform admin flag.")
+
+    before = snapshot(user, _SNAPSHOT_FIELDS)
+    user.is_platform_admin = data.is_platform_admin
+    user.updated_by_id = ctx.user_id
+    await session.flush()
+
+    action = "USER_GRANTED_PLATFORM_ADMIN" if data.is_platform_admin else "USER_REVOKED_PLATFORM_ADMIN"
+    await audit(
+        session, ctx,
+        action=action,
+        entity_type="user",
+        entity_id=user.id,
+        summary=f"Platform admin {'granted to' if data.is_platform_admin else 'revoked from'} {user.email or user.phone}",
+        before=before,
+        after=snapshot(user, _SNAPSHOT_FIELDS),
+    )
+    await session.refresh(user, attribute_names=["memberships"])
+    return user
 
 
 async def get_owned(session: AsyncSession, ctx: RequestContext, user_id: str) -> User:

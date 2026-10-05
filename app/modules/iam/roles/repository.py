@@ -32,9 +32,41 @@ async def get_by_code(session: AsyncSession, organization_id: str, code: str) ->
     return (await session.scalars(stmt)).first()
 
 
-async def list_roles(session: AsyncSession, organization_id: str, params: CursorParams) -> CursorPage[Role]:
+async def list_roles(
+    session: AsyncSession,
+    organization_id: str,
+    params: CursorParams,
+    *,
+    scope_level: str | None = None,
+    is_system: bool | None = None,
+) -> CursorPage[Role]:
     stmt = select(Role).where(
         Role.archived_at.is_(None),
         or_(Role.organization_id == organization_id, Role.organization_id.is_(None)),
     )
+    if scope_level:
+        stmt = stmt.where(Role.scope_level == scope_level)
+    if is_system is not None:
+        stmt = stmt.where(Role.is_system == is_system)
+    return await paginate_cursor(session, stmt, params, model=Role)
+
+
+async def list_all_roles(
+    session: AsyncSession,
+    params: CursorParams,
+    *,
+    organization_id: str | None = None,
+    scope_level: str | None = None,
+    is_system: bool | None = None,
+) -> CursorPage[Role]:
+    """Return roles across all orgs. Platform admins only (enforced at router)."""
+    stmt = select(Role).where(Role.archived_at.is_(None))
+    if organization_id:
+        stmt = stmt.where(
+            or_(Role.organization_id == organization_id, Role.organization_id.is_(None)),
+        )
+    if scope_level:
+        stmt = stmt.where(Role.scope_level == scope_level)
+    if is_system is not None:
+        stmt = stmt.where(Role.is_system == is_system)
     return await paginate_cursor(session, stmt, params, model=Role)

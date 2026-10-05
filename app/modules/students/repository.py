@@ -76,3 +76,19 @@ async def list_students(
             | (Student.admission_number.ilike(pattern))
         )
     return await paginate_cursor(session, stmt, params, model=Student)
+
+
+async def count_students(
+    session: AsyncSession,
+    school_id: str,
+    *,
+    status: StudentStatus | None = None,
+) -> int:
+    stmt = select(func.count()).select_from(Student).where(
+        Student.school_id == school_id,
+        Student.deleted_at.is_(None),
+    )
+    if status is not None:
+        stmt = stmt.where(Student.status == status.value if isinstance(status, StudentStatus) else status)
+    result = await session.scalar(stmt)
+    return result or 0

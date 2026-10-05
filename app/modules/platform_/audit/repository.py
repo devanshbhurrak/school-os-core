@@ -35,6 +35,7 @@ async def list_audit_logs(
     entity_type: str | None = None,
     entity_id: str | None = None,
     actor_user_id: str | None = None,
+    action: str | None = None,
     created_from: datetime | None = None,
     created_to: datetime | None = None,
 ) -> CursorPage[AuditLog]:
@@ -49,6 +50,8 @@ async def list_audit_logs(
         stmt = stmt.where(AuditLog.entity_id == entity_id)
     if actor_user_id:
         stmt = stmt.where(AuditLog.actor_user_id == actor_user_id)
+    if action:
+        stmt = stmt.where(AuditLog.action == action)
     if created_from:
         stmt = stmt.where(AuditLog.created_at >= created_from)
     if created_to:

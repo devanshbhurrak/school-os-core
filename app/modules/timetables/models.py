@@ -1,15 +1,43 @@
 """Timetable ORM models — school-scoped."""
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import date, datetime, time
 
-from sqlalchemy import Date, ForeignKey, Index, Integer, String, Text, Time, UniqueConstraint
+from sqlalchemy import DateTime, Date, ForeignKey, Index, Integer, String, Text, Time, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.mixins import ActorMixin, PKMixin, TimestampMixin, VersionMixin
+from app.db.mixins import ActorMixin, PKMixin, SoftDeleteMixin, TimestampMixin, VersionMixin
 from app.db.types import ULIDType, enum_check
-from app.modules.timetables.enums import DayOfWeek, PeriodType, TimetableSlotStatus
+from app.modules.timetables.enums import DayOfWeek, PeriodType, TimetableSlotStatus, TimetableStatus
+
+
+class Timetable(PKMixin, TimestampMixin, VersionMixin, ActorMixin, SoftDeleteMixin, Base):
+    """Header entity representing a named timetable with DRAFT/PUBLISHED/ARCHIVED lifecycle."""
+
+    __tablename__ = "timetables"
+
+    school_id: Mapped[str] = mapped_column(
+        ULIDType, ForeignKey("schools.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    organization_id: Mapped[str] = mapped_column(
+        ULIDType, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False
+    )
+    academic_year_id: Mapped[str] = mapped_column(
+        ULIDType, ForeignKey("academic_years.id", ondelete="RESTRICT"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(30), nullable=False, default=TimetableStatus.DRAFT.value
+    )
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    slots = relationship("TimetableSlot", back_populates="timetable", lazy="raise")
+
+    __table_args__ = (
+        Index("ix_timetables_school_year_status", "school_id", "academic_year_id", "status"),
+        enum_check("status", TimetableStatus, "status"),
+    )
 
 
 class PeriodDefinition(PKMixin, TimestampMixin, ActorMixin, Base):
@@ -55,6 +83,9 @@ class TimetableSlot(PKMixin, TimestampMixin, VersionMixin, ActorMixin, Base):
     academic_year_id: Mapped[str] = mapped_column(
         ULIDType, ForeignKey("academic_years.id", ondelete="RESTRICT"), nullable=False
     )
+    timetable_id: Mapped[str | None] = mapped_column(
+        ULIDType, ForeignKey("timetables.id", ondelete="RESTRICT"), nullable=True
+    )
     cohort_id: Mapped[str] = mapped_column(
         ULIDType, ForeignKey("cohorts.id", ondelete="RESTRICT"), nullable=False, index=True
     )
@@ -78,6 +109,7 @@ class TimetableSlot(PKMixin, TimestampMixin, VersionMixin, ActorMixin, Base):
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    timetable = relationship("Timetable", back_populates="slots", lazy="raise")
     teacher = relationship("Teacher", foreign_keys=[teacher_id], lazy="raise")
     subject = relationship("Subject", foreign_keys=[subject_id], lazy="raise")
     cohort = relationship("Cohort", foreign_keys=[cohort_id], lazy="raise")

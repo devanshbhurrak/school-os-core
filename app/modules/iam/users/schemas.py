@@ -30,6 +30,11 @@ class UserUpdate(BaseModel):
     version: int = Field(ge=1)
 
 
+class PlatformAdminToggle(BaseModel):
+    is_platform_admin: bool
+    version: int = Field(ge=1)
+
+
 class MembershipBrief(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,13 +1,30 @@
-"""In-process sliding-window rate limiter (Phase 1).
+"""Rate limiting — Phase 10: slowapi (decorator-based) + legacy sliding window.
 
-Per-IP, per-route limits for login and password reset. In-memory only: each
-process enforces its own window, which is fine for a single worker in Phase 1.
-Milestone 7 replaces this with a Redis-backed limiter (production, multi-worker).
+The `limiter` instance (slowapi) is attached to `app.state` in `main.py` and
+provides `@limiter.limit(...)` decorators for route-level enforcement.
+
+The `SlidingWindowLimiter` helpers remain for the auth router's manual checks
+(login lockout, password-reset) which need fine-grained control over the
+error response and per-key logic.
 """
 from __future__ import annotations
 
 import time
 from collections import deque
+
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+# ---------------------------------------------------------------------------
+# slowapi limiter — attach to app.state in main.py
+# ---------------------------------------------------------------------------
+
+limiter = Limiter(key_func=get_remote_address)
+
+
+# ---------------------------------------------------------------------------
+# Legacy in-process sliding-window limiter (auth routes)
+# ---------------------------------------------------------------------------
 
 
 class SlidingWindowLimiter:

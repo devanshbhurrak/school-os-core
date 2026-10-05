@@ -27,15 +27,26 @@ class RoleDelete(BaseModel):
 
 @router.get("", response_model=CursorPage[RoleRead])
 async def list_roles(
+    scope_level: str | None = None,
+    organization_id: str | None = None,
+    is_system: bool | None = None,
     params: CursorParams = Depends(),
     ctx: RequestContext = Depends(require(P_ROLE_LIST)),
     session: SessionDep = None,
 ):
+    if ctx.is_platform_admin:
+        return await repository.list_all_roles(
+            session, params, organization_id=organization_id,
+            scope_level=scope_level, is_system=is_system,
+        )
     if ctx.organization_id is None:
         from app.core.pagination import CursorPage as CP
 
         return CP(items=[], next_cursor=None, has_more=False)
-    return await repository.list_roles(session, ctx.organization_id, params)
+    return await repository.list_roles(
+        session, ctx.organization_id, params,
+        scope_level=scope_level, is_system=is_system,
+    )
 
 
 @router.get("/{role_id}", response_model=RoleRead)

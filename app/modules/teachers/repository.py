@@ -9,7 +9,7 @@ from app.core.pagination import CursorPage, CursorParams
 from app.db.repository import paginate_cursor
 from app.modules.academic.models import AcademicYear, Cohort, Subject
 from app.modules.people.models import Person
-from app.modules.teachers.enums import AssignmentRole, AssignmentStatus
+from app.modules.teachers.enums import AssignmentRole, AssignmentStatus, TeacherStatus
 from app.modules.teachers.models import Teacher, TeacherAssignment
 
 
@@ -67,6 +67,22 @@ async def list_teachers(
     if status:
         stmt = stmt.where(Teacher.status == status)
     return await paginate_cursor(session, stmt, params, model=Teacher)
+
+
+async def count_teachers(
+    session: AsyncSession,
+    school_id: str,
+    *,
+    status: TeacherStatus | None = None,
+) -> int:
+    stmt = select(func.count()).select_from(Teacher).where(
+        Teacher.school_id == school_id,
+        Teacher.deleted_at.is_(None),
+    )
+    if status is not None:
+        stmt = stmt.where(Teacher.status == status.value if isinstance(status, TeacherStatus) else status)
+    result = await session.scalar(stmt)
+    return result or 0
 
 
 async def get_assignment_by_id(

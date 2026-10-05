@@ -32,6 +32,7 @@ from app.modules.iam.enums import UserStatus
 from app.modules.iam.models import User
 from app.modules.iam.users import repository as users_repository
 from app.modules.platform_.audit.service import audit
+from app.core.metrics import auth_failures_total
 
 PASSWORD_RESET_TOKEN_TTL_MINUTES = 30
 
@@ -59,19 +60,23 @@ async def login(
 
     if user is None or user.deleted_at is not None:
         await _record_attempt(session, None, identifier, ip_address, success=False)
+        auth_failures_total.labels(reason="unknown_user").inc()
         raise AuthenticationError()
 
     if _is_locked(user):
         await _record_attempt(session, user.id, identifier, ip_address, success=False)
+        auth_failures_total.labels(reason="account_locked").inc()
         raise AuthenticationError()
 
     if user.status != UserStatus.ACTIVE.value:
         await _record_attempt(session, user.id, identifier, ip_address, success=False)
+        auth_failures_total.labels(reason="account_inactive").inc()
         raise AccountInactiveError()
 
     password_ok = bool(user.password_hash) and verify_password(user.password_hash, password)
     if not password_ok:
         await _register_failure(session, user, identifier, ip_address)
+        auth_failures_total.labels(reason="bad_password").inc()
         raise AuthenticationError()
 
     user.failed_login_count = 0
@@ -113,8 +118,8 @@ async def refresh(
         raise AuthenticationError()
 
     if stored.expires_at <= datetime.now(UTC):
-        stored.revoked_at = datetime.now(UTC)
-        await session.flush()
+        # Revoke durably so it survives the request's rollback on 401
+        await _revoke_token_durable(stored.id)
         raise AuthenticationError()
 
     user = await users_repository.get_by_id(session, stored.user_id)
@@ -202,6 +207,20 @@ async def confirm_password_reset(
     user.locked_until = None
 
     stored.consumed_at = datetime.now(UTC)
+
+    # Expire all other unconsumed reset tokens for this user
+    other_tokens = list(
+        (await session.scalars(
+            select(PasswordResetToken).where(
+                PasswordResetToken.user_id == user.id,
+                PasswordResetToken.consumed_at.is_(None),
+                PasswordResetToken.id != stored.id,
+            )
+        )).all()
+    )
+    now = datetime.now(UTC)
+    for t in other_tokens:
+        t.consumed_at = now
 
     await _revoke_all_user_sessions(session, user.id)
     await session.flush()
@@ -339,6 +358,20 @@ async def _record_attempt(
                 success=success,
             )
         )
+
+
+async def _revoke_token_durable(token_id: str) -> None:
+    """Revoke a single refresh token in a committed transaction.
+
+    Used for expired tokens where the request ends in a 401 and the
+    request-scoped transaction is rolled back.
+    """
+    from app.db.session import async_session_factory
+
+    async with async_session_factory() as bookkeeping, bookkeeping.begin():
+        token = await bookkeeping.get(RefreshToken, token_id)
+        if token is not None:
+            token.revoked_at = datetime.now(UTC)
 
 
 async def _revoke_family_durable(family_id: str) -> None:

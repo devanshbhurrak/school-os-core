@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -49,8 +48,8 @@ class AddressRead(AddressBase):
 
     id: str
     organization_id: str
-    latitude: Decimal | None = None
-    longitude: Decimal | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     version: int
     created_at: datetime
     updated_at: datetime

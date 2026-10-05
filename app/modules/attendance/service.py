@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.context import RequestContext
@@ -48,6 +48,10 @@ async def _get_active_enrollments_for_cohort(
     if isinstance(session_date, _date):
         stmt = stmt.where(
             StudentEnrollment.start_date <= session_date,
+            or_(
+                StudentEnrollment.end_date.is_(None),
+                StudentEnrollment.end_date >= session_date,
+            ),
         )
     return list((await session.scalars(stmt)).all())
 
@@ -292,19 +296,19 @@ async def bulk_update_records(
             code="SESSION_SUBMITTED",
         )
 
-    records_data = [
-        {
+    records_data = []
+    for item in payload.records:
+        student_id = await _resolve_student_id(session, item.enrollment_id, ctx.school_id)
+        records_data.append({
             "enrollment_id": item.enrollment_id,
             "status": item.status.value,
             "arrived_at": item.arrived_at,
             "notes": item.notes,
             "organization_id": ctx.organization_id,
-            "student_id": await _resolve_student_id(session, item.enrollment_id, ctx.school_id),
+            "student_id": student_id,
             "updated_by_id": ctx.user_id,
             "created_by_id": ctx.user_id,
-        }
-        for item in payload.records
-    ]
+        })
 
     await repository.bulk_upsert_records(session, session_id, records_data, ctx.school_id)
     await session.flush()

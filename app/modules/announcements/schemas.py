@@ -21,6 +21,7 @@ class AnnouncementTargetCreate(BaseModel):
 class AnnouncementTargetRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    id: str
     target_type: AnnouncementTargetType
     target_id: str | None
 

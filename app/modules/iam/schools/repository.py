@@ -31,9 +31,29 @@ async def list_schools(
     session: AsyncSession,
     organization_id: str,
     params: CursorParams,
+    *,
+    status: str | None = None,
 ) -> CursorPage[School]:
     stmt = select(School).where(
         School.organization_id == organization_id,
         School.deleted_at.is_(None),
     )
+    if status:
+        stmt = stmt.where(School.status == status)
+    return await paginate_cursor(session, stmt, params, model=School)
+
+
+async def list_all_schools(
+    session: AsyncSession,
+    params: CursorParams,
+    *,
+    organization_id: str | None = None,
+    status: str | None = None,
+) -> CursorPage[School]:
+    """Return schools across all orgs. Platform admins only (enforced at router)."""
+    stmt = select(School).where(School.deleted_at.is_(None))
+    if organization_id:
+        stmt = stmt.where(School.organization_id == organization_id)
+    if status:
+        stmt = stmt.where(School.status == status)
     return await paginate_cursor(session, stmt, params, model=School)

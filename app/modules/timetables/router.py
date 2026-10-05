@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel
 
 from app.core.authz import require
 from app.core.context import RequestContext
@@ -15,6 +16,10 @@ from app.modules.timetables.permissions import (
     PERIOD_LIST,
     PERIOD_READ,
     PERIOD_UPDATE,
+    P_TIMETABLE_CREATE,
+    P_TIMETABLE_LIST,
+    P_TIMETABLE_READ,
+    P_TIMETABLE_UPDATE,
     SLOT_CREATE,
     SLOT_DELETE,
     SLOT_LIST,
@@ -25,6 +30,10 @@ from app.modules.timetables.schemas import (
     PeriodDefinitionCreate,
     PeriodDefinitionRead,
     PeriodDefinitionUpdate,
+    PublishResult,
+    TimetableCreate,
+    TimetableRead,
+    TimetableUpdate,
     TimetableSlotCreate,
     TimetableSlotRead,
     TimetableSlotUpdate,
@@ -81,6 +90,83 @@ async def _slot_read(slot: TimetableSlot) -> TimetableSlotRead:
         "period_name": period_name,
     }
     return TimetableSlotRead.model_validate(data)
+
+
+# ---------------------------------------------------------------------------
+# Timetable Header
+# ---------------------------------------------------------------------------
+
+
+class _VersionBody(BaseModel):
+    version: int
+
+
+@router.post("/timetables", response_model=TimetableRead, status_code=status.HTTP_201_CREATED)
+async def create_timetable(
+    data: TimetableCreate,
+    ctx: RequestContext = Depends(require(P_TIMETABLE_CREATE)),
+    session: SessionDep = None,
+):
+    return await service.create_timetable(session, ctx, data)
+
+
+@router.get("/timetables", response_model=CursorPage[TimetableRead])
+async def list_timetables(
+    academic_year_id: str | None = Query(default=None),
+    timetable_status: str | None = Query(default=None, alias="status"),
+    params: CursorParams = Depends(),
+    ctx: RequestContext = Depends(require(P_TIMETABLE_LIST)),
+    session: SessionDep = None,
+):
+    if ctx.school_id is None:
+        return CursorPage(items=[], next_cursor=None, has_more=False)
+    page = await repository.list_timetables(
+        session, ctx.school_id,
+        academic_year_id=academic_year_id,
+        status=timetable_status,
+        cursor=params.cursor,
+        limit=params.limit,
+    )
+    return page
+
+
+@router.get("/timetables/{timetable_id}", response_model=TimetableRead)
+async def get_timetable(
+    timetable_id: str,
+    ctx: RequestContext = Depends(require(P_TIMETABLE_READ)),
+    session: SessionDep = None,
+):
+    return await service.get_timetable_owned(session, ctx, timetable_id)
+
+
+@router.patch("/timetables/{timetable_id}", response_model=TimetableRead)
+async def update_timetable(
+    timetable_id: str,
+    data: TimetableUpdate,
+    ctx: RequestContext = Depends(require(P_TIMETABLE_UPDATE)),
+    session: SessionDep = None,
+):
+    return await service.update_timetable(session, ctx, timetable_id, data)
+
+
+@router.post("/timetables/{timetable_id}/publish", response_model=PublishResult)
+async def publish_timetable(
+    timetable_id: str,
+    data: _VersionBody,
+    ctx: RequestContext = Depends(require(P_TIMETABLE_UPDATE)),
+    session: SessionDep = None,
+):
+    return await service.publish_timetable(session, ctx, timetable_id, data.version)
+
+
+@router.post("/timetables/{timetable_id}/archive", response_model=TimetableRead)
+async def archive_timetable(
+    timetable_id: str,
+    data: _VersionBody,
+    ctx: RequestContext = Depends(require(P_TIMETABLE_UPDATE)),
+    session: SessionDep = None,
+):
+    return await service.archive_timetable(session, ctx, timetable_id, data.version)
 
 
 # ---------------------------------------------------------------------------

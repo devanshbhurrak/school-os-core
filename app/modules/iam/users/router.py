@@ -14,9 +14,10 @@ from app.modules.iam.users.permissions import (
     P_USER_DELETE,
     P_USER_LIST,
     P_USER_READ,
+    P_USER_TOGGLE_PLATFORM_ADMIN,
     P_USER_UPDATE,
 )
-from app.modules.iam.users.schemas import UserCreate, UserRead, UserUpdate
+from app.modules.iam.users.schemas import PlatformAdminToggle, UserCreate, UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["iam-users"])
 
@@ -28,15 +29,23 @@ class UserDelete(BaseModel):
 @router.get("", response_model=CursorPage[UserRead])
 async def list_users(
     search: str | None = None,
+    status: str | None = None,
+    is_platform_admin: bool | None = None,
     params: CursorParams = Depends(),
     ctx: RequestContext = Depends(require(P_USER_LIST)),
     session: SessionDep = None,
 ):
     if ctx.is_platform_admin:
-        return await repository.list_all_users(session, params, search=search)
+        return await repository.list_all_users(
+            session, params, search=search, status=status,
+            is_platform_admin=is_platform_admin,
+        )
     if ctx.organization_id is None:
         return CursorPage(items=[], next_cursor=None, has_more=False)
-    return await repository.list_users_in_org(session, ctx.organization_id, params, search=search)
+    return await repository.list_users_in_org(
+        session, ctx.organization_id, params, search=search,
+        status=status, is_platform_admin=is_platform_admin,
+    )
 
 
 @router.get("/{user_id}", response_model=UserRead)
@@ -66,6 +75,17 @@ async def update_user(
 ):
     user = await service.get_owned(session, ctx, user_id)
     return await service.update(session, ctx, user, data)
+
+
+@router.patch("/{user_id}/platform-admin", response_model=UserRead)
+async def toggle_platform_admin(
+    user_id: str,
+    data: PlatformAdminToggle,
+    ctx: RequestContext = Depends(require(P_USER_TOGGLE_PLATFORM_ADMIN)),
+    session: SessionDep = None,
+):
+    user = await service.get_owned(session, ctx, user_id)
+    return await service.toggle_platform_admin(session, ctx, user, data)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

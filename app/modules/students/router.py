@@ -23,6 +23,11 @@ from app.modules.students.schemas import (
     StudentUpdate,
 )
 
+
+class StudentCountsResponse(BaseModel):
+    active: int
+    total: int
+
 router = APIRouter(prefix="/students", tags=["students"])
 
 
@@ -32,6 +37,18 @@ class StudentDelete(BaseModel):
 
 def _read(student) -> StudentRead:
     return StudentRead.from_orm_with_person(student)
+
+
+@router.get("/counts", response_model=StudentCountsResponse)
+async def get_student_counts(
+    ctx: RequestContext = Depends(require(P_STUDENT_LIST)),
+    session: SessionDep = None,
+):
+    if ctx.school_id is None:
+        return StudentCountsResponse(active=0, total=0)
+    active = await repository.count_students(session, ctx.school_id, status=StudentStatus.ACTIVE)
+    total = await repository.count_students(session, ctx.school_id)
+    return StudentCountsResponse(active=active, total=total)
 
 
 @router.get("", response_model=CursorPage[StudentRead])

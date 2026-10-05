@@ -9,6 +9,50 @@ from app.modules.timetables.enums import DayOfWeek, PeriodType, TimetableSlotSta
 
 
 # ---------------------------------------------------------------------------
+# Timetable Header
+# ---------------------------------------------------------------------------
+
+
+class TimetableCreate(BaseModel):
+    academic_year_id: str
+    name: str = Field(max_length=200)
+
+
+class TimetableUpdate(BaseModel):
+    name: str | None = Field(None, max_length=200)
+    version: int
+
+
+class TimetableRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    school_id: str
+    organization_id: str
+    academic_year_id: str
+    name: str
+    status: str
+    published_at: datetime | None
+    archived_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    version: int
+
+
+class ConflictItem(BaseModel):
+    conflict_type: str  # "TEACHER" or "COHORT"
+    day_of_week: str
+    period: str
+    entity_name: str  # teacher or cohort name
+    details: str
+
+
+class PublishResult(BaseModel):
+    success: bool
+    conflicts: list[ConflictItem] = []
+
+
+# ---------------------------------------------------------------------------
 # Period Definitions
 # ---------------------------------------------------------------------------
 

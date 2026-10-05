@@ -24,3 +24,9 @@ class TimetableSlotStatus(StrEnum):
     ACTIVE = "ACTIVE"
     CANCELLED = "CANCELLED"
     SUBSTITUTED = "SUBSTITUTED"
+
+
+class TimetableStatus(StrEnum):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"

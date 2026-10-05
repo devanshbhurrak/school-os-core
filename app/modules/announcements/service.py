@@ -135,6 +135,9 @@ async def archive(
     announcement: Announcement,
     version: int,
 ) -> Announcement:
+    if announcement.status == AnnouncementStatus.ARCHIVED:
+        raise InvalidRequestError("This announcement is already archived.", code="ALREADY_ARCHIVED")
+
     if announcement.version != version:
         raise StaleResourceError()
 

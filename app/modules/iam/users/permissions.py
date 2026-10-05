@@ -9,3 +9,6 @@ P_USER_CREATE = registry.register("iam", "user", Action.CREATE, "Create a user a
 P_USER_UPDATE = registry.register("iam", "user", Action.UPDATE, "Update a user account")
 P_USER_DELETE = registry.register("iam", "user", Action.DELETE, "Delete a user account")
 P_USER_INVITE = registry.register("iam", "user", "invite", "Invite a user to an organization")
+P_USER_TOGGLE_PLATFORM_ADMIN = registry.register(
+    "iam", "user", "toggle_platform_admin", "Grant or revoke platform admin flag",
+)

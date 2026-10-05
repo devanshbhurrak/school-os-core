@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import insert, select
+from sqlalchemy import and_, case, func, insert, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -82,6 +82,52 @@ async def list_records_for_session(
         AttendanceRecord.school_id == school_id,
     )
     return list((await session.scalars(stmt)).all())
+
+
+async def get_today_summary(
+    session: AsyncSession,
+    school_id: str,
+    today: date,
+) -> dict:
+    """Return aggregate counts for sessions and records on the given date."""
+    # Count sessions total and submitted for today
+    sessions_stmt = select(
+        func.count().label("sessions_total"),
+        func.sum(
+            case((AttendanceSession.status.in_(["SUBMITTED", "AMENDED"]), 1), else_=0)
+        ).label("sessions_submitted"),
+    ).where(
+        AttendanceSession.school_id == school_id,
+        AttendanceSession.session_date == today,
+    )
+    sessions_row = (await session.execute(sessions_stmt)).one()
+
+    # Count records for sessions on today
+    records_stmt = select(
+        func.count().label("records_total"),
+        func.sum(
+            case((AttendanceRecord.status == "PRESENT", 1), else_=0)
+        ).label("records_present"),
+        func.sum(
+            case((AttendanceRecord.status == "ABSENT", 1), else_=0)
+        ).label("records_absent"),
+    ).join(
+        AttendanceSession,
+        and_(
+            AttendanceRecord.session_id == AttendanceSession.id,
+            AttendanceSession.school_id == school_id,
+            AttendanceSession.session_date == today,
+        ),
+    ).where(AttendanceRecord.school_id == school_id)
+    records_row = (await session.execute(records_stmt)).one()
+
+    return {
+        "sessions_total": sessions_row.sessions_total or 0,
+        "sessions_submitted": int(sessions_row.sessions_submitted or 0),
+        "records_total": records_row.records_total or 0,
+        "records_present": int(records_row.records_present or 0),
+        "records_absent": int(records_row.records_absent or 0),
+    }
 
 
 async def bulk_upsert_records(

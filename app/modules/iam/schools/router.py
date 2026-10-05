@@ -31,15 +31,24 @@ class SchoolDelete(BaseModel):
 
 @router.get("", response_model=CursorPage[SchoolRead])
 async def list_schools(
+    organization_id: str | None = None,
+    status: str | None = None,
     params: CursorParams = Depends(),
     ctx: RequestContext = Depends(require(P_SCHOOL_LIST)),
     session: SessionDep = None,
 ):
+    # Platform admins can browse cross-org; others use their context org.
+    if ctx.is_platform_admin:
+        return await repository.list_all_schools(
+            session, params, organization_id=organization_id, status=status,
+        )
     if ctx.organization_id is None:
         from app.core.pagination import CursorPage as CP
 
         return CP(items=[], next_cursor=None, has_more=False)
-    return await repository.list_schools(session, ctx.organization_id, params)
+    return await repository.list_schools(
+        session, ctx.organization_id, params, status=status,
+    )
 
 
 @router.get("/{school_id}", response_model=SchoolRead)

@@ -10,8 +10,139 @@ from sqlalchemy.orm import selectinload
 from app.core.pagination import CursorPage, CursorParams
 from app.db.repository import paginate_cursor
 from app.modules.teachers.models import Teacher
-from app.modules.timetables.enums import TimetableSlotStatus
-from app.modules.timetables.models import PeriodDefinition, TimetableSlot
+from app.modules.timetables.enums import TimetableSlotStatus, TimetableStatus
+from app.modules.timetables.models import PeriodDefinition, Timetable, TimetableSlot
+
+
+# ---------------------------------------------------------------------------
+# Timetable Header
+# ---------------------------------------------------------------------------
+
+
+async def create_timetable(session: AsyncSession, timetable: Timetable) -> Timetable:
+    session.add(timetable)
+    await session.flush()
+    return timetable
+
+
+async def get_timetable(
+    session: AsyncSession, timetable_id: str, school_id: str
+) -> Timetable | None:
+    stmt = select(Timetable).where(
+        Timetable.id == timetable_id,
+        Timetable.school_id == school_id,
+    )
+    return (await session.scalars(stmt)).first()
+
+
+async def list_timetables(
+    session: AsyncSession,
+    school_id: str,
+    *,
+    academic_year_id: str | None = None,
+    status: str | None = None,
+    cursor: str | None = None,
+    limit: int = 50,
+) -> CursorPage[Timetable]:
+    params = CursorParams(cursor=cursor, limit=limit)
+    stmt = select(Timetable).where(Timetable.school_id == school_id)
+    if academic_year_id:
+        stmt = stmt.where(Timetable.academic_year_id == academic_year_id)
+    if status:
+        stmt = stmt.where(Timetable.status == status)
+    stmt = stmt.order_by(Timetable.created_at.desc(), Timetable.id)
+    return await paginate_cursor(session, stmt, params, model=Timetable)
+
+
+async def find_conflicts(
+    session: AsyncSession, timetable_id: str, school_id: str
+) -> list[dict]:
+    """Find teacher and cohort conflicts within a timetable's slots."""
+    # Get all active slots for this timetable
+    stmt = (
+        select(TimetableSlot)
+        .options(
+            selectinload(TimetableSlot.teacher).selectinload(Teacher.person),
+            selectinload(TimetableSlot.cohort),
+            selectinload(TimetableSlot.period_definition),
+        )
+        .where(
+            TimetableSlot.timetable_id == timetable_id,
+            TimetableSlot.school_id == school_id,
+            TimetableSlot.status == TimetableSlotStatus.ACTIVE,
+        )
+    )
+    result = await session.scalars(stmt)
+    slots = list(result)
+
+    conflicts: list[dict] = []
+
+    # Check teacher conflicts: same teacher, same day, same period
+    teacher_map: dict[tuple[str, str, str], list[TimetableSlot]] = {}
+    for slot in slots:
+        key = (slot.teacher_id, slot.day_of_week, slot.period_definition_id)
+        teacher_map.setdefault(key, []).append(slot)
+
+    for key, group in teacher_map.items():
+        if len(group) > 1:
+            slot = group[0]
+            teacher = slot.teacher
+            person = getattr(teacher, "person", None) if teacher else None
+            name = ""
+            if person:
+                first = getattr(person, "first_name", "") or ""
+                last = getattr(person, "last_name", "") or ""
+                name = f"{first} {last}".strip()
+            period_def = slot.period_definition
+            period_name = getattr(period_def, "name", slot.period_definition_id) if period_def else slot.period_definition_id
+            cohort_names = []
+            for s in group:
+                c = getattr(s, "cohort", None)
+                cohort_names.append(getattr(c, "name", s.cohort_id) if c else s.cohort_id)
+            conflicts.append({
+                "conflict_type": "TEACHER",
+                "day_of_week": slot.day_of_week,
+                "period": period_name,
+                "entity_name": name,
+                "details": f"Teacher {name} is assigned to multiple sections ({', '.join(cohort_names)}) at {period_name} on {slot.day_of_week}.",
+            })
+
+    # Check cohort conflicts: same cohort, same day, same period
+    cohort_map: dict[tuple[str, str, str], list[TimetableSlot]] = {}
+    for slot in slots:
+        key = (slot.cohort_id, slot.day_of_week, slot.period_definition_id)
+        cohort_map.setdefault(key, []).append(slot)
+
+    for key, group in cohort_map.items():
+        if len(group) > 1:
+            slot = group[0]
+            cohort = getattr(slot, "cohort", None)
+            cohort_name = getattr(cohort, "name", slot.cohort_id) if cohort else slot.cohort_id
+            period_def = slot.period_definition
+            period_name = getattr(period_def, "name", slot.period_definition_id) if period_def else slot.period_definition_id
+            conflicts.append({
+                "conflict_type": "COHORT",
+                "day_of_week": slot.day_of_week,
+                "period": period_name,
+                "entity_name": cohort_name,
+                "details": f"Section {cohort_name} has multiple slots at {period_name} on {slot.day_of_week}.",
+            })
+
+    return conflicts
+
+
+async def get_published_timetable_for_year(
+    session: AsyncSession, school_id: str, academic_year_id: str, *, exclude_id: str | None = None
+) -> Timetable | None:
+    """Find the currently PUBLISHED timetable for a school+year."""
+    stmt = select(Timetable).where(
+        Timetable.school_id == school_id,
+        Timetable.academic_year_id == academic_year_id,
+        Timetable.status == TimetableStatus.PUBLISHED,
+    )
+    if exclude_id:
+        stmt = stmt.where(Timetable.id != exclude_id)
+    return (await session.scalars(stmt)).first()
 
 
 # ---------------------------------------------------------------------------

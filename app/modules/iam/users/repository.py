@@ -41,6 +41,8 @@ async def list_users_in_org(
     params: CursorParams,
     *,
     search: str | None = None,
+    status: str | None = None,
+    is_platform_admin: bool | None = None,
 ) -> CursorPage[User]:
     stmt = (
         select(User)
@@ -57,6 +59,10 @@ async def list_users_in_org(
             func.lower(User.email).like(pattern)
             | func.lower(User.phone).like(pattern)
         )
+    if status:
+        stmt = stmt.where(User.status == status)
+    if is_platform_admin is not None:
+        stmt = stmt.where(User.is_platform_admin == is_platform_admin)
     return await paginate_cursor(session, stmt, params, model=User)
 
 
@@ -65,6 +71,8 @@ async def list_all_users(
     params: CursorParams,
     *,
     search: str | None = None,
+    status: str | None = None,
+    is_platform_admin: bool | None = None,
 ) -> CursorPage[User]:
     """Return all non-deleted users across every organization.
 
@@ -77,6 +85,10 @@ async def list_all_users(
             func.lower(User.email).like(pattern)
             | func.lower(User.phone).like(pattern)
         )
+    if status:
+        stmt = stmt.where(User.status == status)
+    if is_platform_admin is not None:
+        stmt = stmt.where(User.is_platform_admin == is_platform_admin)
     return await paginate_cursor(session, stmt, params, model=User)
 
 

@@ -28,6 +28,7 @@ async def list_audit_logs(
     entity_type: str | None = None,
     entity_id: str | None = None,
     actor_user_id: str | None = None,
+    action: str | None = None,
     created_from: datetime | None = None,
     created_to: datetime | None = None,
     params: CursorParams = Depends(),
@@ -56,6 +57,7 @@ async def list_audit_logs(
         entity_type=entity_type,
         entity_id=entity_id,
         actor_user_id=actor_user_id,
+        action=action,
         created_from=created_from,
         created_to=created_to,
     )

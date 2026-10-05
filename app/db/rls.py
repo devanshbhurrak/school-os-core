@@ -122,6 +122,7 @@ ORG_SCOPED_TABLES: tuple[str, ...] = (
     "contacts",
     "memberships",
     "roles",
+    "notifications",
 )
 
 # Tables protected by school-level RLS. Empty in Phase 1; future modules
@@ -140,11 +141,16 @@ SCHOOL_SCOPED_TABLES: tuple[str, ...] = (
     "announcements",
     "announcement_targets",
     "period_definitions",
+    "timetables",
     "timetable_slots",
     "student_guardians",
     "attendance_sessions",
     "attendance_records",
     "import_jobs",
+    "documents",
+    "export_jobs",
+    "parents",
+    "student_parents",
 )
 
 # The organizations root is protected by a policy keyed on its own id.

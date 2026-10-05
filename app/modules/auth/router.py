@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.core.context import get_client_ip, get_request_id
 from app.core.errors import RateLimitedError
 from app.core.ratelimit import (
+    limiter,
     login_limiter,
     login_rate_limit_key,
     password_reset_limiter,
@@ -39,6 +40,7 @@ class ResetAccepted(BaseModel):
 
 
 @router.post("/login", response_model=LoginResponse)
+@limiter.limit("10/minute")
 async def login(
     data: LoginRequest,
     request: Request,
@@ -96,6 +98,7 @@ async def logout(
 
 
 @router.post("/password-reset", response_model=ResetAccepted, status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit("5/minute")
 async def request_password_reset(
     data: PasswordResetRequest,
     request: Request,

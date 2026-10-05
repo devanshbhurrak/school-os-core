@@ -1,0 +1,15 @@
+from enum import StrEnum
+
+
+class ExportJobStatus(StrEnum):
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
+class ReportType(StrEnum):
+    STUDENTS = "STUDENTS"
+    TEACHERS = "TEACHERS"
+    ATTENDANCE_SUMMARY = "ATTENDANCE_SUMMARY"
+    ENROLLMENTS = "ENROLLMENTS"
