@@ -67,7 +67,7 @@ async def confirm_upload(session: AsyncSession, ctx: RequestContext, document_id
     if ctx.school_id is None:
         raise InvalidRequestError("No school context is set for this request.")
 
-    doc = await repository.get_by_id(session, ctx.school_id, document_id)
+    doc = await repository.get_by_id(session, ctx.school_id, document_id, organization_id=ctx.organization_id)
     if doc is None:
         raise NotFoundError("The document was not found.", code="DOCUMENT_NOT_FOUND")
 
@@ -100,7 +100,7 @@ async def get_download_url(
     if ctx.school_id is None:
         raise InvalidRequestError("No school context is set for this request.")
 
-    doc = await repository.get_by_id(session, ctx.school_id, document_id)
+    doc = await repository.get_by_id(session, ctx.school_id, document_id, organization_id=ctx.organization_id)
     if doc is None:
         raise NotFoundError("The document was not found.", code="DOCUMENT_NOT_FOUND")
 
@@ -123,7 +123,7 @@ async def list_documents(
     if ctx.school_id is None:
         from app.core.pagination import CursorPage as CP
         return CP(items=[], next_cursor=None, has_more=False)
-    return await repository.list_documents(session, ctx.school_id, params)
+    return await repository.list_documents(session, ctx.school_id, params, organization_id=ctx.organization_id)
 
 
 async def delete_document(
@@ -132,7 +132,7 @@ async def delete_document(
     if ctx.school_id is None:
         raise InvalidRequestError("No school context is set for this request.")
 
-    doc = await repository.get_by_id(session, ctx.school_id, document_id)
+    doc = await repository.get_by_id(session, ctx.school_id, document_id, organization_id=ctx.organization_id)
     if doc is None:
         raise NotFoundError("The document was not found.", code="DOCUMENT_NOT_FOUND")
 

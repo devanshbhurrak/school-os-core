@@ -29,6 +29,15 @@ async def list_notifications(
     return page
 
 
+@router.post("/read-all")
+async def mark_all_read(
+    ctx: RequestContext = Depends(require(P_NOTIFICATION_UPDATE)),
+    session: SessionDep = None,
+):
+    count = await service.mark_all_read(session, ctx)
+    return {"marked": count}
+
+
 @router.post("/{notification_id}/read", response_model=NotificationRead)
 async def mark_notification_read(
     notification_id: str,
@@ -37,15 +46,6 @@ async def mark_notification_read(
 ):
     notif = await service.mark_read(session, ctx, notification_id)
     return NotificationRead.model_validate(notif)
-
-
-@router.post("/read-all")
-async def mark_all_read(
-    ctx: RequestContext = Depends(require(P_NOTIFICATION_UPDATE)),
-    session: SessionDep = None,
-):
-    count = await service.mark_all_read(session, ctx)
-    return {"marked": count}
 
 
 @router.get("/unread-count", response_model=UnreadCountResponse)
