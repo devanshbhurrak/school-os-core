@@ -19,6 +19,8 @@ from app.modules.people.addresses.router import router as addresses_router
 from app.modules.people.contacts.router import router as contacts_router
 from app.modules.people.persons.router import router as persons_router
 from app.modules.platform_.audit.router import router as audit_logs_router
+from app.modules.platform_.feature_flags.router import router as feature_flags_router
+from app.modules.platform_.outbox.router import router as outbox_router
 from app.modules.platform_.stats.router import router as platform_stats_router
 from app.modules.students.router import router as students_router
 from app.modules.students.enrollments.router import router as enrollments_router
@@ -40,6 +42,8 @@ api_router = APIRouter()
 api_router.include_router(auth_router)
 api_router.include_router(audit_logs_router)
 api_router.include_router(platform_stats_router)
+api_router.include_router(outbox_router)
+api_router.include_router(feature_flags_router)
 api_router.include_router(organizations_router)
 api_router.include_router(schools_router)
 api_router.include_router(users_router)

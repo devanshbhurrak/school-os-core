@@ -163,3 +163,47 @@ async def test_school_admin_cannot_create_organization(seeded_world, client):
         headers=auth(seeded_world.school_admin_a1.id),
     )
     assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Parent role — confined to its own scope
+# ---------------------------------------------------------------------------
+
+
+async def test_parent_cannot_create_student(seeded_world, client):
+    """A parent-role user cannot create students."""
+    person_resp = await client.post(
+        "/api/v1/persons",
+        json={"first_name": "Blocked", "last_name": "ByParent"},
+        headers=auth(seeded_world.school_admin_a1.id),
+    )
+    assert person_resp.status_code == 201
+
+    resp = await client.post(
+        "/api/v1/students",
+        json={
+            "person_id": person_resp.json()["id"],
+            "admission_number": "ADM-PARENT-001",
+            "admission_date": "2024-01-15",
+        },
+        headers=school_auth(seeded_world.parent_a1.id, seeded_world.school_a1_id),
+    )
+    assert resp.status_code == 403
+
+
+async def test_parent_cannot_access_platform_stats(seeded_world, client):
+    """A parent-role user cannot read platform-wide statistics."""
+    resp = await client.get(
+        "/api/v1/platform/stats",
+        headers=auth(seeded_world.parent_a1.id),
+    )
+    assert resp.status_code == 403
+
+
+async def test_parent_cannot_access_audit_logs(seeded_world, client):
+    """A parent-role user cannot read audit logs."""
+    resp = await client.get(
+        "/api/v1/audit-logs",
+        headers=auth(seeded_world.parent_a1.id),
+    )
+    assert resp.status_code == 403

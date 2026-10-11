@@ -38,7 +38,7 @@ async def main() -> None:
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.db.types import gen_ulid
-    from app.modules.iam.models import Permission
+    from app.modules.iam.models import Permission, RolePermission
 
     engine = create_async_engine(get_settings().migration_database_url)
     session = async_sessionmaker(engine, expire_on_commit=False)()
@@ -77,6 +77,11 @@ async def main() -> None:
 
         declared_codes = {p.code for p in declared}
         stale = [row for row in existing_rows if row.code not in declared_codes]
+        stale_ids = [row.id for row in stale]
+        if stale_ids:
+            await session.execute(
+                delete(RolePermission).where(RolePermission.permission_id.in_(stale_ids))
+            )
         for row in stale:
             await session.execute(delete(Permission).where(Permission.id == row.id))
             logger.info("permission_removed", code=row.code)

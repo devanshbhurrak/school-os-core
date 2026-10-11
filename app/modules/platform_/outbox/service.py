@@ -1,8 +1,14 @@
 """Outbox helper: write an outbox row in the caller's transaction.
 
-Phase 1 ships the table and this writer only — there is no dispatcher or
-worker. The row is committed atomically with the domain change, so a future
-worker never has to reconcile "attendance saved but notification missing".
+Phase 1 ships the table and this writer only — there is no active dispatcher or worker.
+The row is committed atomically with the domain change, so a future worker never has
+to reconcile "attendance saved but notification missing".
+
+TODO (Phase 3 Async Infrastructure):
+- Implement outbox polling dispatcher in `app/workers/outbox_dispatcher.py`.
+- Query `outbox_events WHERE processed_at IS NULL AND next_attempt_at <= NOW()`.
+- Dispatch events to external systems (email delivery, push notifications, webhooks).
+- Support exponential backoff retry and dead-lettering (`attempt_count`, `last_error`).
 """
 from __future__ import annotations
 

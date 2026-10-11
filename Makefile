@@ -1,4 +1,4 @@
-.PHONY: install dev test test-unit test-int migrate downgrade sync-perms sync-roles bootstrap check-rls lint format
+.PHONY: install dev worker test test-unit test-int migrate downgrade sync-perms sync-roles bootstrap check-rls lint format
 
 install:
 	python -m venv .venv
@@ -7,6 +7,12 @@ install:
 
 dev:
 	.venv/Scripts/python -m uvicorn app.main:app --reload
+
+worker:
+	.venv/Scripts/python -m app.workers.outbox_dispatcher
+
+worker-once:
+	.venv/Scripts/python -m app.workers.outbox_dispatcher --once
 
 test:
 	.venv/Scripts/python -m pytest

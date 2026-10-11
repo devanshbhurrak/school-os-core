@@ -57,9 +57,39 @@ class Settings(BaseSettings):
     s3_secret_key: str = ""
     s3_region: str = "us-east-1"
 
-    # --- Rate limiting (Phase 1: in-process) ----------------------------
+    # --- Rate limiting (Phase 3: Redis-backed, Upstash-compatible) --------
     login_rate_limit_per_minute: int = 5
     password_reset_rate_limit_per_hour: int = 3
+    # Upstash Redis URL (rediss://... for TLS). Empty = in-memory fallback (dev/test).
+    redis_url: str | None = None
+    redis_pool_max_connections: int = 20
+    redis_socket_timeout_seconds: float = 2.0
+    rate_limit_enabled: bool = True
+
+    # --- Documents / Uploads (Phase 3: R2-hardened) ------------------------
+    max_upload_size_bytes: int = 52_428_800  # 50 MiB default
+    allowed_mime_types: list[str] = [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "text/csv",
+        "text/plain",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ]
+
+    # --- Timeouts (Phase 3) ------------------------------------------------
+    bulk_import_timeout_seconds: float = 300.0
+    document_confirm_timeout_seconds: float = 10.0
+
+    # --- Outbox dispatcher (Phase 3) ---------------------------------------
+    outbox_poll_interval_seconds: float = 5.0
+    outbox_batch_size: int = 25
+    outbox_max_attempts: int = 5
 
     # --- Bootstrap ------------------------------------------------------
     bootstrap_org_code: str = "demo"

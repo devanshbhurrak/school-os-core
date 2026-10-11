@@ -1,13 +1,16 @@
-"""Bulk import/export routes."""
+"""Bulk import/export routes (Phase 3: bounded import timeout)."""
 from __future__ import annotations
 
+import asyncio
 import io
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.core.authz import require
+from app.core.config import get_settings
 from app.core.context import RequestContext
+from app.core.errors import RequestTimeoutError
 from app.core.pagination import CursorPage
 from app.db.session import SessionDep
 from app.modules.bulk_import import repository, service
@@ -71,7 +74,19 @@ async def upload_import(
 ) -> ImportJobRead:
     content = await file.read()
     filename = file.filename or "upload.csv"
-    job = await service.start_import(session, ctx, resource_type, content, filename)
+    # A4: bound long-running imports; large files must move to background jobs
+    # (Phase 4). The client receives 504 and can poll GET /import-jobs.
+    timeout = get_settings().bulk_import_timeout_seconds
+    try:
+        job = await asyncio.wait_for(
+            service.start_import(session, ctx, resource_type, content, filename),
+            timeout=timeout,
+        )
+    except asyncio.TimeoutError as exc:
+        raise RequestTimeoutError(
+            f"Import processing exceeded {timeout:g}s and was cancelled. "
+            "Split the file into smaller batches and retry."
+        ) from exc
     return ImportJobRead.model_validate(job)
 
 

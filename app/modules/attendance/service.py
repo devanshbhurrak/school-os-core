@@ -196,6 +196,22 @@ async def submit_session(
     attendance_session.updated_by_id = ctx.user_id
     await session.flush()
 
+    # A6: enqueue parent-notification event atomically with the submit.
+    from app.modules.platform_.outbox.service import publish as publish_event
+
+    await publish_event(
+        session,
+        "ATTENDANCE_SUBMITTED",
+        payload={
+            "session_id": attendance_session.id,
+            "cohort_id": getattr(attendance_session, "cohort_id", None),
+            "session_date": str(getattr(attendance_session, "session_date", "")),
+        },
+        ctx=ctx,
+        entity_type="attendance_session",
+        entity_id=attendance_session.id,
+    )
+
     await audit(
         session, ctx,
         action="ATTENDANCE_SESSION_SUBMITTED",

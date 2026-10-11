@@ -230,7 +230,19 @@ async def create_assignment(
         **data.model_dump(),
     )
     session.add(instance)
-    await session.flush()
+    try:
+        await session.flush()
+    except Exception as exc:
+        # Race-proofing: a concurrent writer may have committed a conflicting
+        # ACTIVE assignment between our check and our flush (migration 0026).
+        from sqlalchemy.exc import IntegrityError as _IntegrityError
+
+        if isinstance(exc, _IntegrityError) and "uq_assignment_" in str(exc.orig or exc):
+            raise ConflictError(
+                "An active assignment already exists for this cohort, subject, and year.",
+                code="ASSIGNMENT_CONFLICT",
+            ) from exc
+        raise
 
     await audit(
         session, ctx,

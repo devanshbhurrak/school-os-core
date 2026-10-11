@@ -101,7 +101,20 @@ async def create(
         status=EnrollmentStatus.ACTIVE.value,
     )
     session.add(instance)
-    await session.flush()
+    try:
+        await session.flush()
+    except Exception as exc:
+        # Race-proofing: a concurrent writer may have committed an ACTIVE
+        # enrollment between our check and our flush (uq_enrollment_student_year_active).
+        from sqlalchemy.exc import IntegrityError as _IntegrityError
+
+        if isinstance(exc, _IntegrityError) and "uq_enrollment_" in str(exc.orig or exc):
+            raise ConflictError(
+                "This student already has an active enrollment for the specified academic year.",
+                code="ALREADY_ENROLLED",
+                details={"student_id": data.student_id, "academic_year_id": data.academic_year_id},
+            ) from exc
+        raise
 
     # Attach relations for snapshot/response
     instance.student = student  # type: ignore[assignment]

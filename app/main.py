@@ -1,5 +1,12 @@
-"""Application factory: middleware, error envelope, health checks, routes."""
+"""Application factory: middleware, error envelope, health checks, routes.
+
+Phase 3: lifespan validates object-storage (R2/S3) connectivity at startup —
+fail fast in production, warn-and-continue in development/test so local runs
+without credentials still boot.
+"""
 from __future__ import annotations
+
+from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
@@ -19,6 +26,23 @@ from app.modules.platform_.health.router import router as health_router
 logger = structlog.get_logger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings = get_settings()
+    # A3: object-storage connectivity check at startup.
+    try:
+        from app.modules.documents.storage import check_connectivity
+
+        await __import__("asyncio").to_thread(check_connectivity)
+        logger.info("storage_connectivity_ok", endpoint=settings.s3_endpoint)
+    except Exception as exc:
+        if settings.environment == "production":
+            logger.error("storage_connectivity_failed", error=str(exc))
+            raise RuntimeError(f"Object storage unreachable at startup: {exc}") from exc
+        logger.warning("storage_connectivity_failed_dev", error=str(exc))
+    yield
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings)
@@ -28,6 +52,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         docs_url="/docs" if settings.environment != "production" else None,
         openapi_url="/openapi.json" if settings.environment != "production" else None,
+        lifespan=lifespan,
     )
 
     # --- slowapi rate-limit state & exception handler ---

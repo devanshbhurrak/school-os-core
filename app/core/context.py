@@ -76,15 +76,33 @@ async def get_context(
     user_id: Annotated[str, Depends(get_current_user_id)] = ...,
     session: Annotated[AsyncSession, Depends(get_db)] = ...,
 ) -> RequestContext:
-    """Resolve the authenticated principal and bind the RLS tenant context."""
+    """Resolve the authenticated principal and bind the RLS tenant context.
+
+    A5: the resolved principal is cached on `request.state` keyed by
+    `(user_id, requested_school_id)` so a single request that checks multiple
+    permissions (or resolves the principal via several dependencies) performs
+    exactly one DB resolution. The cache lives and dies with the request —
+    never shared across requests.
+    """
     from app.db.rls import set_tenant_context
     from app.modules.iam.principal import resolve_principal
 
-    principal = await resolve_principal(
-        session,
-        user_id=user_id,
-        requested_school_id=school_id_header,
+    cache: dict[tuple[str | None, str | None], object] = getattr(
+        request.state, "_principal_cache", None
     )
+    if cache is None:
+        cache = {}
+        request.state._principal_cache = cache
+
+    cache_key = (user_id, school_id_header)
+    principal = cache.get(cache_key)
+    if principal is None:
+        principal = await resolve_principal(
+            session,
+            user_id=user_id,
+            requested_school_id=school_id_header,
+        )
+        cache[cache_key] = principal
 
     await set_tenant_context(
         session,

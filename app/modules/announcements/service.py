@@ -117,6 +117,38 @@ async def publish(
     announcement.updated_by_id = ctx.user_id
     await session.flush()
 
+    # A6: enqueue fan-out event atomically with the publish (dispatcher
+    # creates in-app notifications + triggers Phase-4 channels).
+    from sqlalchemy import select as _select
+
+    from app.modules.announcements.models import AnnouncementTarget
+    from app.modules.platform_.outbox.service import publish as publish_event
+
+    _target_rows = list(
+        (await session.scalars(
+            _select(AnnouncementTarget).where(
+                AnnouncementTarget.announcement_id == announcement.id
+            )
+        )).all()
+    )
+    targets = [
+        {"target_type": t.target_type, "target_id": t.target_id}
+        for t in _target_rows
+    ]
+    await publish_event(
+        session,
+        "ANNOUNCEMENT_PUBLISHED",
+        payload={
+            "announcement_id": announcement.id,
+            "title": announcement.title,
+            "priority": announcement.priority,
+            "targets": targets,
+        },
+        ctx=ctx,
+        entity_type="announcement",
+        entity_id=announcement.id,
+    )
+
     await audit(
         session, ctx,
         action="ANNOUNCEMENT_PUBLISHED",

@@ -3,16 +3,30 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class DocumentUploadRequest(BaseModel):
     entity_type: str
     entity_id: str
     document_type: str
-    original_filename: str
+    original_filename: str = Field(min_length=1, max_length=255)
     mime_type: str
     file_size: int = Field(gt=0)
+
+    @field_validator("file_size")
+    @classmethod
+    def _check_size(cls, value: int) -> int:
+        # Enforced again in the service (authoritative); this gives a fast 422.
+        from app.core.config import get_settings
+
+        try:
+            cap = get_settings().max_upload_size_bytes
+        except Exception:
+            cap = 52_428_800
+        if value > cap:
+            raise ValueError(f"File is too large. Maximum allowed is {cap} bytes.")
+        return value
 
 
 class DocumentUploadResponse(BaseModel):

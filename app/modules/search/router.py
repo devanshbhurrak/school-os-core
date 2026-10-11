@@ -35,18 +35,30 @@ class TeacherSearchResult(BaseModel):
 class GlobalSearchResponse(BaseModel):
     students: list[StudentSearchResult]
     teachers: list[TeacherSearchResult]
+    offset: int = 0
+    limit: int = 20
+    has_more_students: bool = False
+    has_more_teachers: bool = False
 
 
 @router.get("/search", response_model=GlobalSearchResponse)
 async def global_search(
     q: str = Query(min_length=2, max_length=100),
     limit: int = Query(default=20, le=50),
+    offset: int = Query(default=0, ge=0, le=1000),
     session: SessionDep = None,
     ctx: RequestContext = Depends(require_authenticated),
 ):
     """Search across students and teachers by name or ID number."""
     if not ctx.school_id:
-        return GlobalSearchResponse(students=[], teachers=[])
+        return GlobalSearchResponse(
+            students=[],
+            teachers=[],
+            offset=offset,
+            limit=limit,
+            has_more_students=False,
+            has_more_teachers=False,
+        )
 
     search_term = f"%{q}%"
     q_lower = q.lower()
@@ -67,11 +79,15 @@ async def global_search(
                 Student.admission_number.ilike(search_term),
             ),
         )
-        .limit(limit)
+        .offset(offset)
+        .limit(limit + 1)
     )
 
     students_result = await session.execute(students_stmt)
-    students_rows = students_result.all()
+    students_rows = list(students_result.all())
+    has_more_students = len(students_rows) > limit
+    if has_more_students:
+        students_rows = students_rows[:limit]
 
     # Search teachers — join Person for name fields
     teachers_stmt = (
@@ -89,11 +105,15 @@ async def global_search(
                 Teacher.employee_number.ilike(search_term),
             ),
         )
-        .limit(limit)
+        .offset(offset)
+        .limit(limit + 1)
     )
 
     teachers_result = await session.execute(teachers_stmt)
-    teachers_rows = teachers_result.all()
+    teachers_rows = list(teachers_result.all())
+    has_more_teachers = len(teachers_rows) > limit
+    if has_more_teachers:
+        teachers_rows = teachers_rows[:limit]
 
     def _student_item(student: Student, person: Person) -> StudentSearchResult:
         return StudentSearchResult(
@@ -116,4 +136,8 @@ async def global_search(
     return GlobalSearchResponse(
         students=[_student_item(s, p) for s, p in students_rows],
         teachers=[_teacher_item(t, p) for t, p in teachers_rows],
+        offset=offset,
+        limit=limit,
+        has_more_students=has_more_students,
+        has_more_teachers=has_more_teachers,
     )

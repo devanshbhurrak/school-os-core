@@ -48,7 +48,7 @@ async def login(
 ):
     settings = get_settings()
     ip = get_client_ip(request)
-    allowed, retry_after = login_limiter.allow(
+    allowed, retry_after = await login_limiter.allow_async(
         login_rate_limit_key(ip), settings.login_rate_limit_per_minute, 60
     )
     if not allowed:
@@ -106,7 +106,7 @@ async def request_password_reset(
 ):
     settings = get_settings()
     ip = get_client_ip(request)
-    allowed, retry_after = password_reset_limiter.allow(
+    allowed, retry_after = await password_reset_limiter.allow_async(
         password_reset_rate_limit_key(ip), settings.password_reset_rate_limit_per_hour, 3600
     )
     if not allowed:

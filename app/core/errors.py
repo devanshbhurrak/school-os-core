@@ -36,6 +36,8 @@ class ErrorCode(StrEnum):
     CONFLICT = "CONFLICT"
     STALE_RESOURCE = "STALE_RESOURCE"
     RATE_LIMITED = "RATE_LIMITED"
+    TIMEOUT = "TIMEOUT"
+    PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
     ACCOUNT_INACTIVE = "ACCOUNT_INACTIVE"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
@@ -161,6 +163,36 @@ class StaleResourceError(ApiError):
         ),
     ) -> None:
         super().__init__(message)
+
+
+class FileTooLargeError(ApiError):
+    """An upload exceeds the configured maximum size."""
+    status_code = status.HTTP_413_CONTENT_TOO_LARGE
+    code = ErrorCode.PAYLOAD_TOO_LARGE
+
+    def __init__(
+        self,
+        message: str = "The file is too large.",
+        *,
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, code=code or ErrorCode.PAYLOAD_TOO_LARGE.value, details=details)
+
+
+class RequestTimeoutError(ApiError):
+    """A downstream call (storage, import) exceeded its bounded timeout."""
+    status_code = status.HTTP_504_GATEWAY_TIMEOUT
+    code = ErrorCode.TIMEOUT
+
+    def __init__(
+        self,
+        message: str = "The request timed out. Please retry.",
+        *,
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, code=code or ErrorCode.TIMEOUT.value, details=details)
 
 
 class RateLimitedError(ApiError):
